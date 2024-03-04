@@ -174,6 +174,7 @@ export class DocumentStorage implements IDocumentStorage {
 		);
 		let initialSummaryVersionId: string;
 		try {
+			Lumberjack.info("writeSummaryTree");
 			const handle = await uploadManager.writeSummaryTree(
 				fullTree /* summaryTree */,
 				"" /* parentHandle */,
@@ -181,6 +182,7 @@ export class DocumentStorage implements IDocumentStorage {
 				0 /* sequenceNumber */,
 				true /* initial */,
 			);
+			Lumberjack.info("wroteSummaryTree");
 
 			let initialSummaryUploadSuccessMessage = `Tree reference: ${JSON.stringify(handle)}`;
 

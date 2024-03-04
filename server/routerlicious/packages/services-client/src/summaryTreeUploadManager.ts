@@ -41,7 +41,9 @@ export class SummaryTreeUploadManager implements ISummaryUploadManager {
 		sequenceNumber?: number,
 		initial?: boolean,
 	): Promise<string> {
+		console.log("GET previousFullSnapshot");
 		const previousFullSnapshot = await this.getPreviousFullSnapshot(parentHandle);
+		console.log("GOT previousFullSnapshot");
 		return this.writeSummaryTreeCore(summaryTree, previousFullSnapshot ?? undefined);
 	}
 

@@ -77,6 +77,9 @@ export class RouterliciousDocumentServiceFactory implements IDocumentServiceFact
 			...defaultRouterliciousDriverPolicies,
 			...driverPolicies,
 		};
+
+		this.driverPolicies.enableWholeSummaryUpload = true; // Enable wholeSummaryUpload in Client-side. 
+
 		this.blobCache = new InMemoryCache<ArrayBufferLike>();
 		if (this.driverPolicies.enableInternalSummaryCaching) {
 			if (this.driverPolicies.enableWholeSummaryUpload) {

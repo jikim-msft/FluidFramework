@@ -85,6 +85,7 @@ export function create(
 		return service.getTree(sha, recursive, useCache);
 	}
 
+	// TODO: Discuss to delete this endpoint or not.
 	router.post(
 		"/repos/:ignored?/:tenantId/git/trees",
 		validateRequestParams("tenantId"),
@@ -100,6 +101,7 @@ export function create(
 		},
 	);
 
+	// TODO: Discuss to delete this endpoint or not.
 	router.get(
 		"/repos/:ignored?/:tenantId/git/trees/:sha",
 		validateRequestParams("tenantId", "sha"),

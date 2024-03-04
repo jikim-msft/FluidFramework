@@ -95,6 +95,30 @@ export async function getTree(
 	};
 }
 
+// async function createSummary(
+// 	tenantId: string,
+// 	authorization: string,
+// 	params: IWholeSummaryPayload,
+// 	initial?: boolean,
+// 	storageName?: string,
+// ): Promise<IWriteSummaryResponse> {
+// 	const service = await utils.createGitService({
+// 		config,
+// 		tenantId,
+// 		authorization,
+// 		tenantService,
+// 		storageNameRetriever,
+// 		documentManager,
+// 		cache,
+// 		asyncLocalStorage,
+// 		initialUpload: initial,
+// 		storageName,
+// 		isEphemeralContainer,
+// 		denyList,
+// 	});
+// 	return service.createSummary(params, initial);
+// }
+
 export function create(store: nconf.Provider): Router {
 	const router: Router = Router();
 
@@ -107,6 +131,35 @@ export function create(store: nconf.Provider): Router {
 		);
 
 		utils.handleResponse(treeP, response, false, 201);
+	});
+
+	router.post("/repos/:ignored?/:tenantId/git/summaries", (request, response, next) => {
+		// request.query type is { [string]: string } but it's actually { [string]: any }
+		// Account for possibilities of undefined, boolean, or string types. A number will be false.
+		// const initial: boolean | undefined =
+		// 	typeof request.query.initial === "undefined"
+		// 		? undefined
+		// 		: typeof request.query.initial === "boolean"
+		// 		? request.query.initial
+		// 		: request.query.initial === "true";
+
+		// // const lumberjackProperties = {
+		// // 	[BaseTelemetryProperties.tenantId]: request.params.tenantId,
+		// // 	[Constants.IsEphemeralContainer]: isEphemeralContainer,
+		// // 	[Constants.isInitialSummary]: initial,
+		// // };
+		// // Lumberjack.info(`Calling createSummary`, lumberjackProperties);
+
+		// const summaryP = createSummary(
+		// 	request.params.tenantId,
+		// 	request.get("Authorization"),
+		// 	request.body,
+		// 	initial,
+		// 	request.get("StorageName"),
+		// );
+
+		// utils.handleResponse(summaryP, response, false, undefined, 201);
+		throw new Error("ERRORS in trees.ts");
 	});
 
 	router.get("/repos/:ignored?/:tenantId/git/trees/:sha", (request, response) => {

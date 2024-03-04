@@ -64,7 +64,7 @@ export class TinyliciousResourcesFactory implements IResourcesFactory<Tinyliciou
 		const storage = new DocumentStorage(
 			documentRepository,
 			tenantManager,
-			false,
+			true, // Enable wholeSummaryUpload in Server side. 
 			opsCollection,
 			storageNameAllocator,
 		);
