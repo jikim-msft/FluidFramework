@@ -26,20 +26,21 @@ import {
 	ISession,
 	convertSummaryTreeToWholeSummaryTree,
 } from "@fluidframework/server-services-client";
+import { ICache, InMemoryCache, NullCache } from "./cache";
+import { INormalizedWholeSnapshot } from "./contracts";
+import { ISnapshotTreeVersion } from "./definitions";
 import { DocumentService } from "./documentService";
+import { pkgVersion as driverVersion } from "./packageVersion";
 import { IRouterliciousDriverPolicies } from "./policies";
-import { ITokenProvider } from "./tokens";
 import {
 	RouterliciousOrdererRestWrapper,
 	RouterliciousStorageRestWrapper,
 	toInstrumentedR11sOrdererTokenFetcher,
 	toInstrumentedR11sStorageTokenFetcher,
 } from "./restWrapper";
-import { parseFluidUrl, replaceDocumentIdInPath, getDiscoveredFluidResolvedUrl } from "./urlUtils";
-import { ICache, InMemoryCache, NullCache } from "./cache";
-import { pkgVersion as driverVersion } from "./packageVersion";
-import { ISnapshotTreeVersion } from "./definitions";
-import { INormalizedWholeSnapshot } from "./contracts";
+import { isRouterliciousResolvedUrl } from "./routerliciousResolvedUrl";
+import { ITokenProvider } from "./tokens";
+import { replaceDocumentIdInPath, getDiscoveredFluidResolvedUrl } from "./urlUtils";
 
 const maximumSnapshotCacheDurationMs: FiveDaysMs = 432_000_000; // 5 days in ms
 
@@ -52,7 +53,6 @@ const defaultRouterliciousDriverPolicies: IRouterliciousDriverPolicies = {
 	enableRestLess: true,
 	enableInternalSummaryCaching: true,
 	enableLongPollingDowngrade: true,
-	isEphemeralContainer: false,
 };
 
 /**
@@ -110,7 +110,7 @@ export class RouterliciousDocumentServiceFactory implements IDocumentServiceFact
 			throw new Error("Empty file summary creation isn't supported in this driver.");
 		}
 		assert(!!resolvedUrl.endpoints.ordererUrl, 0x0b2 /* "Missing orderer URL!" */);
-		let parsedUrl = parseFluidUrl(resolvedUrl.url);
+		const parsedUrl = new URL(resolvedUrl.url);
 		if (!parsedUrl.pathname) {
 			throw new Error("Parsed url should contain tenant and doc Id!!");
 		}
@@ -141,6 +141,10 @@ export class RouterliciousDocumentServiceFactory implements IDocumentServiceFact
 			resolvedUrl.endpoints.ordererUrl,
 		);
 
+		const createAsEphemeral = isRouterliciousResolvedUrl(resolvedUrl)
+			? resolvedUrl.createAsEphemeral === true
+			: false;
+
 		const res = await PerformanceEvent.timedExecAsync(
 			logger2,
 			{
@@ -148,7 +152,7 @@ export class RouterliciousDocumentServiceFactory implements IDocumentServiceFact
 				details: JSON.stringify({
 					enableDiscovery: this.driverPolicies.enableDiscovery,
 					sequenceNumber: documentAttributes.sequenceNumber,
-					isEphemeralContainer: this.driverPolicies.isEphemeralContainer,
+					isEphemeralContainer: createAsEphemeral,
 				}),
 			},
 			async (event) => {
@@ -162,7 +166,7 @@ export class RouterliciousDocumentServiceFactory implements IDocumentServiceFact
 						values: quorumValues,
 						enableDiscovery: this.driverPolicies.enableDiscovery,
 						generateToken: this.tokenProvider.documentPostCreateCallback !== undefined,
-						isEphemeralContainer: this.driverPolicies.isEphemeralContainer,
+						isEphemeralContainer: createAsEphemeral,
 						enableAnyBinaryBlobOnFirstSummary: true,
 					})
 				).content;
@@ -188,7 +192,6 @@ export class RouterliciousDocumentServiceFactory implements IDocumentServiceFact
 			token = res.token;
 			session = this.driverPolicies.enableDiscovery ? res.session : undefined;
 		}
-		parsedUrl = parseFluidUrl(resolvedUrl.url);
 
 		// @TODO: Remove token from the condition, checking the documentPostCreateCallback !== undefined
 		// is sufficient to determine if the token will be undefined or not.
@@ -209,7 +212,7 @@ export class RouterliciousDocumentServiceFactory implements IDocumentServiceFact
 			throw new DocumentPostCreateError(error);
 		}
 
-		parsedUrl.set("pathname", replaceDocumentIdInPath(parsedUrl.pathname, documentId));
+		parsedUrl.pathname = replaceDocumentIdInPath(parsedUrl.pathname, documentId);
 		const deltaStorageUrl = resolvedUrl.endpoints.deltaStorageUrl;
 		if (!deltaStorageUrl) {
 			throw new Error(
@@ -249,7 +252,7 @@ export class RouterliciousDocumentServiceFactory implements IDocumentServiceFact
 		clientIsSummarizer?: boolean,
 		session?: ISession,
 	): Promise<IDocumentService> {
-		const parsedUrl = parseFluidUrl(resolvedUrl.url);
+		const parsedUrl = new URL(resolvedUrl.url);
 		const [, tenantId, documentId] = parsedUrl.pathname.split("/");
 		if (!documentId || !tenantId) {
 			throw new Error(
