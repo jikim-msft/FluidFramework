@@ -205,4 +205,4 @@ export {
 	AllowedUpdateType,
 } from "./schema-view/index.js";
 
-export { type Revertible, RevertibleStatus } from "./revertible/index.js";
+export { type Revertible, RevertibleStatus } from "../shared-tree/revertible/index.js";

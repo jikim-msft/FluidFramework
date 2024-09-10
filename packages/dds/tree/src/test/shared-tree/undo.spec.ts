@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import { type UpPath, rootFieldKey } from "../../core/index.js";
+import { type Revertible, type UpPath, rootFieldKey } from "../../core/index.js";
 import { singleJsonCursor } from "../json/index.js";
 import type { ITreeCheckout } from "../../shared-tree/index.js";
 import { type JsonCompatible, brand } from "../../util/index.js";
@@ -303,15 +303,72 @@ describe("Undo and redo", () => {
 		unsubscribe();
 	});
 
+	it.skip("Forked Revertible", () => {
+		const tree1 = makeTreeFromJsonSequence(["A", "B", "C"]);
+
+		const {
+			undoStack: undoStack1,
+			redoStack: redoStack1,
+			unsubscribe: unsubscribe1,
+		} = createTestUndoRedoStacks(tree1.events);
+
+		console.log("BEFORE", undoStack1);
+		tree1.editor.sequenceField(rootField).remove(0, 1); // ["B", "C"]
+		tree1.editor.sequenceField(rootField).remove(1, 1); // ["B"]
+
+		console.log("AFTER", undoStack1);
+		// First compare undoStack1 and undoStack2.
+		const latestRevert = undoStack1.pop(); // Rervert remove of C
+		const forked = latestRevert?.fork(); // Rervert remove of C & TODO: pass a view tree2
+
+		console.log(latestRevert);
+		console.log(forked);
+
+		forked?.revert();
+		console.log("BEFORE", tree1);
+		expectJsonTree(tree1, ["B"]);
+		latestRevert?.revert();
+		console.log("AFTER", tree1);
+		expectJsonTree(tree1, ["B", "C"]);
+		unsubscribe1();
+	});
+
+	it.skip("TEST Forked Revertible", () => {
+		const tree1 = makeTreeFromJsonSequence([1, 2, 3, 4, 5]);
+
+		const {
+			undoStack: undoStack1,
+			redoStack: redoStack1,
+			unsubscribe: unsubscribe1,
+		} = createTestUndoRedoStacks(tree1.events);
+
+		tree1.editor.sequenceField(rootField).remove(0, 1); // [2, 3, 4, 5]
+		tree1.editor.sequenceField(rootField).remove(2, 1); // [2, 3, 5]
+		tree1.editor.sequenceField(rootField).insert(3, singleJsonCursor(4)); // [2, 3, 5, 4]
+
+		console.log("AFTER", undoStack1, redoStack1);
+		console.log("REVERTIBLE PEEK", undoStack1[undoStack1.length - 1]);
+
+		const forked1 = undoStack1[undoStack1.length - 1].fork();
+		undoStack1.pop()?.revert(); // [2, 3, 5, 4] -> [2, 3, 5]
+
+		console.log("FORKED", forked1);
+		unsubscribe1();
+		forked1.dispose();
+	});
+
 	// TODO: unskip once forking revertibles is supported
 	it.skip("can undo after forking a branch", () => {
 		const tree1 = makeTreeFromJsonSequence(["A", "B", "C"]);
 
-		const { undoStack: undoStack1, unsubscribe: unsubscribe1 } = createTestUndoRedoStacks(
-			tree1.events,
-		);
-		tree1.editor.sequenceField(rootField).remove(0, 1);
-		tree1.editor.sequenceField(rootField).remove(1, 1);
+		const {
+			undoStack: undoStack1,
+			redoStack: redoStack1,
+			unsubscribe: unsubscribe1,
+		} = createTestUndoRedoStacks(tree1.events);
+
+		tree1.editor.sequenceField(rootField).remove(0, 1); // ["B", "C"]
+		tree1.editor.sequenceField(rootField).remove(1, 1); // ["B"]
 
 		const tree2 = tree1.fork();
 		const { undoStack: undoStack2, unsubscribe: unsubscribe2 } = createTestUndoRedoStacks(
@@ -368,3 +425,6 @@ describe("Undo and redo", () => {
 		unsubscribe();
 	});
 });
+function expect(forkedRevertible: Revertible, arg1: number[]) {
+	throw new Error("Function not implemented.");
+}

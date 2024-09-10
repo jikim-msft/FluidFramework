@@ -21,6 +21,7 @@ import {
 	type CommitMetadata,
 	type DeltaVisitor,
 	type DetachedFieldIndex,
+	type GraphCommit,
 	type IEditableForest,
 	type IForestSubscription,
 	type JsonableTree,
@@ -413,7 +414,7 @@ export class TreeCheckout implements ITreeCheckoutFork {
 			idCompressor,
 		),
 		/** Optional logger for telemetry. */
-		private readonly logger?: ITelemetryLoggerExt,
+		public readonly logger?: ITelemetryLoggerExt,
 	) {
 		// when a transaction is started, take a snapshot of the current state of removed roots
 		branch.on("transactionStarted", () => {
@@ -499,6 +500,7 @@ export class TreeCheckout implements ITreeCheckoutFork {
 								"Cannot generate the same revertible more than once. Note that this can happen when multiple commitApplied event listeners are registered.",
 							);
 						}
+
 						const revertibleCommits = this.revertibleCommitBranches;
 						const revertible: DisposableRevertible = {
 							get status(): RevertibleStatus {
@@ -523,6 +525,9 @@ export class TreeCheckout implements ITreeCheckoutFork {
 								if (release) {
 									revertible.dispose();
 								}
+							},
+							fork(view: TreeCheckout): Revertible {
+								return forkRevertible(revertible, revertibleCommits, commit, data, view);
 							},
 							dispose: () => {
 								if (revertible.status === RevertibleStatus.Disposed) {
@@ -687,13 +692,13 @@ export class TreeCheckout implements ITreeCheckoutFork {
 		}
 	}
 
-	private disposeRevertible(revertible: DisposableRevertible, revision: RevisionTag): void {
+	public disposeRevertible(revertible: DisposableRevertible, revision: RevisionTag): void {
 		this.revertibleCommitBranches.get(revision)?.dispose();
 		this.revertibleCommitBranches.delete(revision);
 		this.revertibles.delete(revertible);
 	}
 
-	private revertRevertible(revision: RevisionTag, kind: CommitKind): RevertMetrics {
+	public revertRevertible(revision: RevisionTag, kind: CommitKind): RevertMetrics {
 		if (this.branch.isTransacting()) {
 			throw new UsageError("Undo is not yet supported during transactions.");
 		}
@@ -786,4 +791,58 @@ export function runSynchronous(
 
 interface DisposableRevertible extends Revertible {
 	dispose: () => void;
+}
+
+function forkRevertible(
+	revertible: Revertible,
+	revertibleCommits: Map<
+		RevisionTag,
+		SharedTreeBranch<SharedTreeEditBuilder, SharedTreeChange>
+	>,
+	commit: GraphCommit<SharedTreeChange>,
+	data: CommitMetadata,
+	view: TreeCheckout,
+): Revertible {
+	assert(
+		revertible.status !== RevertibleStatus.Disposed,
+		0x912 /* "Invalid operation on a disposed revertible" */,
+	);
+
+	const { revision } = commit;
+
+	const forked: Revertible = {
+		get status(): RevertibleStatus {
+			const revertibleCommit = revertibleCommits.get(revision);
+			return revertibleCommit === undefined
+				? RevertibleStatus.Disposed
+				: RevertibleStatus.Valid;
+		},
+		revert: (release: boolean = true) => {
+			if (forked.status === RevertibleStatus.Disposed) {
+				throw new UsageError("Unable to revert a revertible that has been disposed.");
+			}
+
+			const revertMetrics = view.revertRevertible(revision, data.kind);
+			view.logger?.sendTelemetryEvent({
+				eventName: TreeCheckout.revertTelemetryEventName,
+				...revertMetrics,
+			});
+
+			if (release) {
+				forked.dispose();
+			}
+		},
+		fork: (viewTarget: TreeCheckout) => {
+			return forkRevertible(revertible, revertibleCommits, commit, data, view.fork()); // Recursive fork
+		},
+		dispose: () => {
+			if (forked.status === RevertibleStatus.Disposed) {
+				throw new UsageError("Unable to dispose a revertible that has already been disposed.");
+			}
+			view.disposeRevertible(forked, revision);
+			// onRevertibleDisposed?.(forked);
+		},
+	};
+
+	return forked;
 }

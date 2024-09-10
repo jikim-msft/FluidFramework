@@ -1387,6 +1387,7 @@ export const shortCodeMap = {
 	"0x90e": "Unknown format version",
 	"0x90f": "Attempted to apply \"nodeExists\" constraint when building a transaction, but the node is not in the document.",
 	"0x911": "Invalid operation on a disposed TreeCheckout",
+	"0x912": "Invalid operation on a disposed revertible",
 	"0x916": "invalid value",
 	"0x91b": "node without schema",
 	"0x91c": "Proxy anchor should not be set twice",
