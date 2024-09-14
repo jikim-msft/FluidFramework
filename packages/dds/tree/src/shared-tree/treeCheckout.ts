@@ -39,6 +39,7 @@ import {
 	tagChange,
 	visitDelta,
 	type RevertibleFactory,
+	type GraphCommit,
 } from "../core/index.js";
 import {
 	type HasListeners,
@@ -60,6 +61,8 @@ import { type IDisposable, TransactionResult, disposeSymbol, fail } from "../uti
 import { SharedTreeChangeFamily, hasSchemaChange } from "./sharedTreeChangeFamily.js";
 import type { SharedTreeChange } from "./sharedTreeChangeTypes.js";
 import type { ISharedTreeEditor, SharedTreeEditBuilder } from "./sharedTreeEditBuilder.js";
+import { SharedTreeRevertible } from "./SharedTreeRevertible.js";
+import type { CommitPair } from "./revertibles.js";
 
 /**
  * Events for {@link ITreeCheckout}.
@@ -468,6 +471,7 @@ export class TreeCheckout implements ITreeCheckoutFork {
 			}
 		});
 		branch.on("commitApplied", (data) => {
+			const dataKind = data.kind;
 			const commit = branch.getHead();
 			const { change, revision } = commit;
 			let withinEventContext = true;
@@ -486,6 +490,8 @@ export class TreeCheckout implements ITreeCheckoutFork {
 							);
 						}
 						const revertibleCommits = this.revertibleCommitBranches;
+
+						// Replace this to `SharedTreeRevertible`.
 						const revertible: DisposableRevertible = {
 							get status(): RevertibleStatus {
 								const revertibleCommit = revertibleCommits.get(revision);
@@ -520,6 +526,67 @@ export class TreeCheckout implements ITreeCheckoutFork {
 								onRevertibleDisposed?.(revertible);
 							},
 						};
+
+						// Create closures to capture the current state of the branch and revertible.
+						const getStatus = (): RevertibleStatus => {
+							const revertibleCommit = revertibleCommits.get(revision);
+							return revertibleCommit === undefined
+								? RevertibleStatus.Disposed
+								: RevertibleStatus.Valid;
+						};
+
+						const getCommits = (): CommitPair => {
+							if (this.branch.isTransacting()) {
+								throw new UsageError("Undo is not yet supported during transactions.");
+							}
+
+							const revertibleBranch = this.revertibleCommitBranches.get(revision);
+							assert(
+								revertibleBranch !== undefined,
+								0x7cc /* expected to find a revertible commit */,
+							);
+
+							const commitToRevert = revertibleBranch.getHead();
+							let commitChange = makeAnonChange(
+								this.changeFamily.rebaser.invert(
+									tagChange(commitToRevert.change, revision),
+									false,
+								),
+							);
+
+							const headCommit = this.branch.getHead();
+							// Rebase the inverted change onto any commits that occurred after the undoable commits.
+							if (commitToRevert !== headCommit) {
+								commitChange = makeAnonChange(
+									rebaseChange(
+										this.changeFamily.rebaser,
+										commitChange,
+										commitToRevert,
+										headCommit,
+										this.mintRevisionTag,
+									).change,
+								);
+							}
+
+							this.branch.apply(
+								commitChange.change,
+								this.mintRevisionTag(),
+								dataKind === CommitKind.Default || dataKind === CommitKind.Redo
+									? CommitKind.Undo
+									: CommitKind.Redo,
+							);
+
+							return { commitToRevert, headCommit };
+						};
+
+						const sharedTreeRevertible = new SharedTreeRevertible(
+							getStatus.bind(this),
+							getCommits.bind(this),
+							this.disposeRevertible.bind(this),
+							onRevertibleDisposed?.bind(this),
+							this.branch,
+							this.logger,
+						);
 
 						this.revertibleCommitBranches.set(revision, branch.fork());
 						this.revertibles.add(revertible);
@@ -770,6 +837,6 @@ export function runSynchronous(
 		: view.transaction.commit();
 }
 
-interface DisposableRevertible extends Revertible {
+export interface DisposableRevertible extends Revertible {
 	dispose: () => void;
 }

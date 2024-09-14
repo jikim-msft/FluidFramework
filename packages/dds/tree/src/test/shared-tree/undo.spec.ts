@@ -367,4 +367,19 @@ describe("Undo and redo", () => {
 		expectJsonTree(tree, ["B", "C"]);
 		unsubscribe();
 	});
+
+	/**
+	 * REMOVE
+	 */
+	it.only("Revert operation test", () => {
+		const tree = makeTreeFromJsonSequence(["A", "B", "C"]);
+
+		const { undoStack, unsubscribe } = createTestUndoRedoStacks(tree.events);
+
+		tree.editor.sequenceField(rootField).remove(0, 1); // ["B", "C"]
+		tree.editor.sequenceField(rootField).insert(2, singleJsonCursor("D")); // ["B", "C", "D"]
+
+		undoStack.pop()?.revert();
+		unsubscribe();
+	});
 });
