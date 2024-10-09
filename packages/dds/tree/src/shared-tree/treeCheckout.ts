@@ -534,7 +534,7 @@ export class TreeCheckout implements ITreeCheckoutFork {
 										);
 									}
 									const revertibleCommits = this.revertibleCommitBranches;
-									const revertible: DisposableRevertible = {
+									const revertible: ClonableRevertible = {
 										get status(): RevertibleStatus {
 											const revertibleCommit = revertibleCommits.get(revision);
 											return revertibleCommit === undefined
@@ -557,6 +557,9 @@ export class TreeCheckout implements ITreeCheckoutFork {
 											if (release) {
 												revertible.dispose();
 											}
+										},
+										clone: (view?: TreeView<ImplicitFieldSchema>) => {
+											return this.cloneRevertibles(revision, kind, view, onRevertibleDisposed);
 										},
 										dispose: () => {
 											if (revertible.status === RevertibleStatus.Disposed) {
@@ -599,6 +602,52 @@ export class TreeCheckout implements ITreeCheckoutFork {
 				});
 			});
 		});
+	}
+
+	private cloneRevertibles(
+		revision: RevisionTag,
+		kind: CommitKind,
+		view?: TreeView<ImplicitFieldSchema>,
+		onRevertibleDisposed?: (revertible: Revertible) => void,
+	): ClonableRevertible {
+		const revertibleCommits = this.revertibleCommitBranches;
+		const cloneRevertibles: ClonableRevertible = {
+			get status(): RevertibleStatus {
+				const revertibleCommit = revertibleCommits.get(revision);
+				return revertibleCommit === undefined
+					? RevertibleStatus.Disposed
+					: RevertibleStatus.Valid;
+			},
+			revert: (release: boolean = true) => {
+				if (cloneRevertibles.status === RevertibleStatus.Disposed) {
+					throw new UsageError("Unable to revert a revertible that has been disposed.");
+				}
+
+				const revertMetrics = this.revertRevertible(revision, kind);
+				this.logger?.sendTelemetryEvent({
+					eventName: TreeCheckout.revertTelemetryEventName,
+					...revertMetrics,
+				});
+
+				if (release) {
+					cloneRevertibles.dispose();
+				}
+			},
+			clone: (newView?: TreeView<ImplicitFieldSchema>) => {
+				return this.cloneRevertibles(revision, kind, newView);
+			},
+			dispose: () => {
+				if (cloneRevertibles.status === RevertibleStatus.Disposed) {
+					throw new UsageError(
+						"Unable to dispose a revertible that has already been disposed.",
+					);
+				}
+				this.disposeRevertible(cloneRevertibles, revision);
+				onRevertibleDisposed?.(cloneRevertibles);
+			},
+		};
+
+		return cloneRevertibles;
 	}
 
 	private withCombinedVisitor(fn: (visitor: DeltaVisitor) => void): void {
@@ -776,7 +825,11 @@ export class TreeCheckout implements ITreeCheckoutFork {
 		this.revertibles.delete(revertible);
 	}
 
-	private revertRevertible(revision: RevisionTag, kind: CommitKind): RevertMetrics {
+	private revertRevertible(
+		revision: RevisionTag,
+		kind: CommitKind,
+		targetView?: TreeView<ImplicitFieldSchema>,
+	): RevertMetrics {
 		if (this._branch.isTransacting()) {
 			throw new UsageError("Undo is not yet supported during transactions.");
 		}
@@ -867,6 +920,13 @@ export function runSynchronous(
 	return result === TransactionResult.Abort
 		? view.transaction.abort()
 		: view.transaction.commit();
+}
+
+/**
+ * @alpha
+ */
+export interface ClonableRevertible extends DisposableRevertible {
+	clone(view?: TreeView<ImplicitFieldSchema>): ClonableRevertible;
 }
 
 interface DisposableRevertible extends Revertible {

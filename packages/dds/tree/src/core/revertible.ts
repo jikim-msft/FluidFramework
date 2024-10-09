@@ -3,6 +3,9 @@
  * Licensed under the MIT License.
  */
 
+// eslint-disable-next-line import/no-internal-modules
+import type { ClonableRevertible } from "../shared-tree/treeCheckout.js";
+
 /**
  * Allows reversion of a change made to SharedTree.
  *
@@ -62,3 +65,7 @@ export enum RevertibleStatus {
 export type RevertibleFactory = (
 	onRevertibleDisposed?: (revertible: Revertible) => void,
 ) => Revertible;
+
+export type ClonableRevertibleFactory = (
+	onRevertibleDisposed?: (revertible: ClonableRevertible) => void,
+) => ClonableRevertible;
