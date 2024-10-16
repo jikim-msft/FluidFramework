@@ -429,6 +429,18 @@ describe("Undo and redo", () => {
 		unsubscribe();
 	});
 
+	it("can undo multiple merges", () => {
+		const tree = makeTreeFromJsonSequence(["A", "B"]);
+
+		const { undoStack, unsubscribe } = createTestUndoRedoStacks(tree.events);
+
+		tree.editor.sequenceField(rootField).insert(2, singleJsonCursor("C")); // A, B, C
+
+		undoStack.pop()?.revert(); // A, B
+
+		expectJsonTree(tree, ["A", "B"]);
+	});
+
 	it.only("can undo / redo", () => {
 		const view: TreeView<typeof RootNodeSchema> = createLocalSharedTree("testSharedTree");
 
@@ -441,34 +453,22 @@ describe("Undo and redo", () => {
 
 		// make some edits set x =1
 		if (view.root.child !== undefined) {
-			view.root.child.propertyOne = 1;
 			view.root.child.propertyTwo.itemOne = "newItem";
 		}
 
-		const twoUndo = undoStack.pop();
-		const oneUndo = undoStack.pop();
+		const undo = undoStack.pop(); // "newItem" -> ""
+		undo?.revert();
+		const originalPropertyTwoAfter = view.root.child?.propertyTwo.itemOne; // ""
 
 		const forkedBranch = getBranch(view).branch();
 		const forkedView = forkedBranch.viewWith(
 			new TreeViewConfiguration({ schema: RootNodeSchema }),
-		); // passes in schema.
+		);
 
-		oneUndo?.revert();
+		const forkedPropertyTwoAfter = forkedView.root.child?.propertyTwo.itemOne; // "newItem"
 
-		const forkedPropertyTwo = forkedView.root.child?.propertyTwo.itemOne;
-		console.log(forkedPropertyTwo);
-
-		twoUndo?.clone(forkedView).revert();
-		const forkedPropertyTwoAgain = forkedView.root.child?.propertyTwo.itemOne;
-		const originalPropertyTwo = view.root.child?.propertyTwo.itemOne;
-		console.log(forkedPropertyTwoAgain);
-		console.log(originalPropertyTwo);
-
-		// undo the edits on the forked branch
-		// make sure the first branch x = 1
-		// make sure the forked branch x = 128
-
-		console.log(undoStack);
+		console.log(originalPropertyTwoAfter);
+		console.log(forkedPropertyTwoAfter);
 	});
 });
 

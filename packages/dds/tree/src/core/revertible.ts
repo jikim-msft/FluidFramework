@@ -3,9 +3,6 @@
  * Licensed under the MIT License.
  */
 
-// eslint-disable-next-line import/no-internal-modules
-import type { ClonableRevertible } from "../shared-tree/treeCheckout.js";
-
 /**
  * Allows reversion of a change made to SharedTree.
  *
