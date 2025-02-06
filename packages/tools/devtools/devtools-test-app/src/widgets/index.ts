@@ -9,3 +9,5 @@ export type { EmojiButtonProps } from "./EmojiButton.js";
 export { EmojiButton } from "./EmojiButton.js";
 export type { EmojiGridProps } from "./EmojiGrid.js";
 export { EmojiGrid } from "./EmojiGrid.js";
+export type { DiceWidgetProps } from "./DiceWidget.js";
+export { DiceWidget } from "./DiceWidget.js";

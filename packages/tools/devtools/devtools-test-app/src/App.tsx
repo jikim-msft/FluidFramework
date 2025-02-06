@@ -29,6 +29,7 @@ import {
 } from "@fluidframework/devtools-core/internal";
 import type { SharedMatrix } from "@fluidframework/matrix/internal";
 import type { SharedString } from "@fluidframework/sequence/internal";
+import type { ITree, TreeViewConfiguration } from "@fluidframework/tree";
 import React from "react";
 
 import {
@@ -39,7 +40,7 @@ import {
 } from "./ClientUtilities.js";
 import type { IAppModel } from "./Container.js";
 import type { AppData } from "./FluidObject.js";
-import { CounterWidget, EmojiGrid } from "./widgets/index.js";
+import { CounterWidget, EmojiGrid, DiceWidget } from "./widgets/index.js";
 
 const sharedContainerKey: ContainerKey = "Shared Container";
 const privateContainerKey: ContainerKey = "Private Container";
@@ -271,8 +272,20 @@ function AppView(props: AppViewProps): React.ReactElement {
 			<EmojiMatrixView emojiMatrix={appData.emojiMatrix} />
 			<CounterView sharedCounter={appData.counter} />
 			<TextView sharedText={appData.text} />
+			<DiceView tree={appData.sharedTreeDice} config={appData.diceConfig} />
 		</div>
 	);
+}
+
+interface DiceViewProps {
+	tree: ITree;
+	config: TreeViewConfiguration;
+}
+
+function DiceView(props: DiceViewProps): React.ReactElement {
+	const { tree, config } = props;
+
+	return tree === undefined ? <Spinner /> : <DiceWidget tree={tree} config={config} />;
 }
 
 interface TextViewProps {

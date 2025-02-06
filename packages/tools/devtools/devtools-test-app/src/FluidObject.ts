@@ -36,6 +36,11 @@ export class AppData extends DataObject {
 	private readonly sharedTreeKey = "shared-tree";
 
 	/**
+	 * TODO
+	 */
+	private readonly sharedTreeDiceKey = "shared-tree-dice"; // Add this new key
+
+	/**
 	 * Key in the app's `rootMap` under which the SharedDirectory object is stored.
 	 */
 	private readonly initialObjectsDirKey = "rootMap";
@@ -43,9 +48,25 @@ export class AppData extends DataObject {
 	// previous app's `rootMap`
 	private readonly _initialObjects: Record<string, IFluidLoadable> = {};
 	private _sharedTree: ITree | undefined;
+	private _sharedTreeDice: ITree | undefined;
 	private _text: SharedString | undefined;
 	private _counter: SharedCounter | undefined;
 	private _emojiMatrix: SharedMatrix | undefined;
+
+	private static readonly diceSchemaFactory = new SchemaFactory("Dice_Schema");
+	private static readonly DiceRoller = class extends AppData.diceSchemaFactory.object(
+		"DiceRoller",
+		{
+			value: AppData.diceSchemaFactory.number,
+		},
+	) {};
+	private static readonly diceConfig = new TreeViewConfiguration({
+		schema: [AppData.DiceRoller],
+	});
+
+	public get diceConfig(): TreeViewConfiguration {
+		return AppData.diceConfig;
+	}
 
 	public get text(): SharedString {
 		if (this._text === undefined) {
@@ -73,6 +94,13 @@ export class AppData extends DataObject {
 			throw new Error("The SharedTree was not initialized correctly");
 		}
 		return this._sharedTree;
+	}
+
+	public get sharedTreeDice(): ITree {
+		if (this._sharedTreeDice === undefined) {
+			throw new Error("The SharedTreeDice was not initialized correctly");
+		}
+		return this._sharedTreeDice;
 	}
 
 	public getRootObject(): Record<string, IFluidLoadable> {
@@ -103,6 +131,7 @@ export class AppData extends DataObject {
 		const text = SharedString.create(this.runtime, this.sharedTextKey);
 		const counter = SharedCounter.create(this.runtime, this.sharedCounterKey);
 		const sharedTree = SharedTree.create(this.runtime);
+		const sharedTreeDice = SharedTree.create(this.runtime);
 
 		const emojiMatrix = SharedMatrix.create(this.runtime, this.emojiMatrixKey);
 		const matrixDimension = 2; // Height and Width
@@ -115,12 +144,14 @@ export class AppData extends DataObject {
 			}
 		}
 		this.populateSharedTree(sharedTree);
+		this.populateSharedTreeDice(sharedTreeDice);
 
 		this.root.createSubDirectory(this.initialObjectsDirKey);
 		this.root.set(this.sharedTextKey, text.handle);
 		this.root.set(this.sharedCounterKey, counter.handle);
 		this.root.set(this.emojiMatrixKey, emojiMatrix.handle);
 		this.root.set(this.sharedTreeKey, sharedTree.handle);
+		this.root.set(this.sharedTreeDiceKey, sharedTreeDice.handle);
 
 		// Also set a couple of primitives for testing the debug view
 		this.root.set("numeric-value", 42);
@@ -147,6 +178,9 @@ export class AppData extends DataObject {
 			.get<IFluidHandle<SharedMatrix>>(this.emojiMatrixKey)
 			?.get();
 		const sharedTree = await this.root.get<IFluidHandle<ITree>>(this.sharedTreeKey)?.get();
+		const sharedTreeDice = await this.root
+			.get<IFluidHandle<ITree>>(this.sharedTreeDiceKey)
+			?.get();
 		if (sharedTree === undefined) {
 			throw new Error("SharedTree was not initialized");
 		} else {
@@ -171,6 +205,11 @@ export class AppData extends DataObject {
 			}
 
 			await Promise.all(loadInitialObjectsP);
+		}
+		if (sharedTreeDice === undefined) {
+			throw new Error("SharedTreeDice was not initialized");
+		} else {
+			this._sharedTreeDice = sharedTreeDice;
 		}
 	}
 
@@ -232,6 +271,13 @@ export class AppData extends DataObject {
 					],
 				},
 			},
+		});
+	}
+
+	private populateSharedTreeDice(sharedTreeDice: ITree): void {
+		const view = sharedTreeDice.viewWith(AppData.diceConfig);
+		view.initialize({
+			value: 1,
 		});
 	}
 }
