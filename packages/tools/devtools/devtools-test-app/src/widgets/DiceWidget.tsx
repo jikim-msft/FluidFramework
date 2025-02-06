@@ -56,7 +56,6 @@ export function VisualDie(props: VisualDieProps): JSX.Element {
 	const { diceRoller } = props;
 
 	const divStyle = {
-		color: `hsl(${diceRoller.value * 60}, 70%, 50%)`,
 		fontSize: "200px",
 		cursor: "pointer",
 	};
