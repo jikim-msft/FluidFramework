@@ -284,7 +284,13 @@ interface DiceViewProps {
 function DiceView(props: DiceViewProps): React.ReactElement {
 	const { tree } = props;
 
-	return tree === undefined ? <Spinner /> : <DiceWidget tree={tree} />;
+	return tree === undefined ? (
+		<Spinner />
+	) : (
+		<div style={{ margin: "50px 0" }}>
+			<DiceWidget tree={tree} />
+		</div>
+	);
 }
 
 interface TextViewProps {
