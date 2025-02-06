@@ -151,7 +151,7 @@ export class AppData extends DataObject {
 				emojiMatrix.setCell(row, col, emojiCell.handle);
 			}
 		}
-		this.populateSharedTree(sharedTree);
+		this.populateSharedTree(sharedTree, text.handle as IFluidHandle<SharedString>);
 		this.populateSharedTreeDice(sharedTreeDice);
 
 		this.root.createSubDirectory(this.initialObjectsDirKey);
@@ -221,7 +221,7 @@ export class AppData extends DataObject {
 		}
 	}
 
-	private populateSharedTree(sharedTree: ITree): void {
+	private populateSharedTree(sharedTree: ITree, textHandle: IFluidHandle<SharedString>): void {
 		const builder = new SchemaFactory("TodoList_Schema");
 
 		class TodoItem extends builder.object("todo-item", {
@@ -240,6 +240,7 @@ export class AppData extends DataObject {
 
 		class TodoWorkspace extends builder.object("todo-workspace", {
 			lists: TodoCategory,
+			handle: builder.optional(builder.handle),
 		}) {}
 
 		const config = new TreeViewConfiguration({
@@ -279,6 +280,7 @@ export class AppData extends DataObject {
 					],
 				},
 			},
+			handle: textHandle,
 		});
 	}
 
