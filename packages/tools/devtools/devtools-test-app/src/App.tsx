@@ -29,7 +29,7 @@ import {
 } from "@fluidframework/devtools-core/internal";
 import type { SharedMatrix } from "@fluidframework/matrix/internal";
 import type { SharedString } from "@fluidframework/sequence/internal";
-import type { ITree, TreeViewConfiguration } from "@fluidframework/tree";
+import type { TreeView } from "@fluidframework/tree";
 import React from "react";
 
 import {
@@ -39,7 +39,7 @@ import {
 	loadExistingContainer,
 } from "./ClientUtilities.js";
 import type { IAppModel } from "./Container.js";
-import type { AppData } from "./FluidObject.js";
+import type { DiceRoller, AppData } from "./FluidObject.js";
 import { CounterWidget, EmojiGrid, DiceWidget } from "./widgets/index.js";
 
 const sharedContainerKey: ContainerKey = "Shared Container";
@@ -272,20 +272,19 @@ function AppView(props: AppViewProps): React.ReactElement {
 			<EmojiMatrixView emojiMatrix={appData.emojiMatrix} />
 			<CounterView sharedCounter={appData.counter} />
 			<TextView sharedText={appData.text} />
-			<DiceView tree={appData.sharedTreeDice} config={appData.diceConfig} />
+			<DiceView tree={appData.getDiceTreeView()} />
 		</div>
 	);
 }
 
 interface DiceViewProps {
-	tree: ITree;
-	config: TreeViewConfiguration;
+	tree: TreeView<typeof DiceRoller>;
 }
 
 function DiceView(props: DiceViewProps): React.ReactElement {
-	const { tree, config } = props;
+	const { tree } = props;
 
-	return tree === undefined ? <Spinner /> : <DiceWidget tree={tree} config={config} />;
+	return tree === undefined ? <Spinner /> : <DiceWidget tree={tree} />;
 }
 
 interface TextViewProps {

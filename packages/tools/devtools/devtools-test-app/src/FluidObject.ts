@@ -1,3 +1,4 @@
+/* eslint-disable jsdoc/require-jsdoc */
 /*!
  * Copyright (c) Microsoft Corporation and contributors. All rights reserved.
  * Licensed under the MIT License.
@@ -10,10 +11,21 @@ import { SharedCounter } from "@fluidframework/counter/internal";
 import { SharedMatrix } from "@fluidframework/matrix/internal";
 import { SharedString } from "@fluidframework/sequence/internal";
 import { type ITree, SchemaFactory, TreeViewConfiguration } from "@fluidframework/tree";
-import { SharedTree } from "@fluidframework/tree/internal";
-/**
- * AppData uses the React CollaborativeTextArea to load a collaborative HTML <textarea>
- */
+import { SharedTree, type TreeView } from "@fluidframework/tree/internal";
+
+export const diceSchemaFactory = new SchemaFactory("Dice_Schema");
+export class DiceRoller extends diceSchemaFactory.object("DiceRoller", {
+	value: diceSchemaFactory.number,
+}) {
+	public roll(): void {
+		let newValue = -1;
+		while (newValue === this.value || newValue === -1) {
+			newValue = Math.floor(Math.random() * 6) + 1;
+		}
+		this.value = newValue;
+	}
+}
+
 export class AppData extends DataObject {
 	/**
 	 * Key in the app's `rootMap` under which the SharedString object is stored.
@@ -52,20 +64,16 @@ export class AppData extends DataObject {
 	private _text: SharedString | undefined;
 	private _counter: SharedCounter | undefined;
 	private _emojiMatrix: SharedMatrix | undefined;
+	private _diceTreeView: TreeView<typeof DiceRoller> | undefined;
 
-	private static readonly diceSchemaFactory = new SchemaFactory("Dice_Schema");
-	private static readonly DiceRoller = class extends AppData.diceSchemaFactory.object(
-		"DiceRoller",
-		{
-			value: AppData.diceSchemaFactory.number,
-		},
-	) {};
+	private static readonly DiceRoller = DiceRoller;
+
 	private static readonly diceConfig = new TreeViewConfiguration({
-		schema: [AppData.DiceRoller],
+		schema: AppData.DiceRoller,
 	});
 
-	public get diceConfig(): TreeViewConfiguration {
-		return AppData.diceConfig;
+	public get diceRoller(): typeof DiceRoller {
+		return DiceRoller;
 	}
 
 	public get text(): SharedString {
@@ -275,9 +283,17 @@ export class AppData extends DataObject {
 	}
 
 	private populateSharedTreeDice(sharedTreeDice: ITree): void {
-		const view = sharedTreeDice.viewWith(AppData.diceConfig);
-		view.initialize({
+		// Store the view for later use
+		this._diceTreeView = sharedTreeDice.viewWith(AppData.diceConfig);
+		this._diceTreeView.initialize({
 			value: 1,
 		});
+	}
+
+	public getDiceTreeView(): TreeView<typeof DiceRoller> {
+		if (this._diceTreeView === undefined) {
+			throw new Error("The DiceTreeView was not initialized correctly");
+		}
+		return this._diceTreeView;
 	}
 }
