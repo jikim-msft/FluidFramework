@@ -1,8 +1,8 @@
 {
-	"name": "@fluid-internal/devtools-view",
-	"version": "2.23.0",
+	"name": "@fluidframework/devtools-ai-collab",
+	"version": "1.0.0",
 	"private": true,
-	"description": "Contains a visualization suite for use alongside the Fluid Devtools",
+	"description": "Contains a AI collaboration suite for use alongside the Fluid Devtools",
 	"homepage": "https://fluidframework.com",
 	"repository": {
 		"type": "git",
@@ -72,7 +72,6 @@
 		"@fluidframework/container-loader": "workspace:~",
 		"@fluidframework/core-interfaces": "workspace:~",
 		"@fluidframework/datastore-definitions": "workspace:~",
-		"@fluidframework/devtools-ai-collab": "workspace:~",
 		"@fluidframework/devtools-core": "workspace:~",
 		"@fluidframework/driver-definitions": "workspace:~",
 		"@fluidframework/telemetry-utils": "workspace:~",

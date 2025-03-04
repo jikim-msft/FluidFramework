@@ -5,6 +5,7 @@
 
 import { FluentProvider, makeStyles, shorthands, tokens } from "@fluentui/react-components";
 import type { ITelemetryBaseLogger } from "@fluidframework/core-interfaces";
+import { ChatPane } from "@fluidframework/devtools-ai-collab";
 import {
 	type ContainerKey,
 	ContainerList,
@@ -342,7 +343,10 @@ function View(props: ViewProps): React.ReactElement {
 				container === undefined ? (
 					<div>Could not find a Devtools instance for that container.</div>
 				) : (
-					<ContainerDevtoolsView containerKey={menuSelection.containerKey} />
+					<>
+						<ContainerDevtoolsView containerKey={menuSelection.containerKey} />
+						<ChatPane containerKey={""} />
+					</>
 				);
 			break;
 		}
