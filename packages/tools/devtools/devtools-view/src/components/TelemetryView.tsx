@@ -23,6 +23,8 @@ import {
 	shorthands,
 	tokens,
 } from "@fluentui/react-components";
+import { ArrowDownload16Regular } from "@fluentui/react-icons";
+import { DevtoolsAgent } from "@fluidframework/devtools-ai-collab";
 import {
 	DevtoolsDisposed,
 	GetTelemetryHistory,
@@ -172,6 +174,39 @@ export function TelemetryView(): React.ReactElement {
 		usageLogger?.sendTelemetryEvent({ eventName: "RefreshTelemetryButtonClicked" });
 	};
 
+	const downloadTelemetryLog = (): void => {
+		if (!telemetryEvents) return;
+
+		const content = JSON.stringify(telemetryEvents, undefined, 2);
+
+		const blob = new Blob([content], { type: "application/json" });
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement("a");
+		link.href = url;
+		link.download = `telemetry-log-${new Date().toISOString()}.json`;
+
+		document.body.append(link);
+		link.click();
+
+		link.remove();
+		URL.revokeObjectURL(url);
+
+		usageLogger?.sendTelemetryEvent({
+			eventName: "TelemetryLogsDownloaded",
+		});
+	};
+
+	const askLLM = (): void => {
+		const agent = new DevtoolsAgent();
+
+		const prompt = {
+			prompt: "What is the meaning of life?",
+			promptTopic: "Life",
+		};
+
+		console.log(agent, prompt);
+	};
+
 	return (
 		<div className={styles.root}>
 			<ListLengthSelection
@@ -195,6 +230,22 @@ export function TelemetryView(): React.ReactElement {
 					<Button aria-label="Refresh Telemetry" onClick={handleLoadMore} size="small">
 						Refresh
 					</Button>
+				</div>
+			</div>
+			<div>
+				<div>
+					Save Log{" "}
+					<Button
+						icon={<ArrowDownload16Regular />}
+						aria-label="Download the telemetry log"
+						onClick={downloadTelemetryLog}
+					/>
+				</div>
+			</div>
+			<div>
+				<div>
+					Ask LLM{" "}
+					<Button icon={<ArrowDownload16Regular />} aria-label="Ask LLM" onClick={askLLM} />
 				</div>
 			</div>
 			{telemetryEvents === undefined ? (
