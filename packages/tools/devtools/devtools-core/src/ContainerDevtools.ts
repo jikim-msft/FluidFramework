@@ -4,8 +4,18 @@
  */
 
 import type { IAudience } from "@fluidframework/container-definitions";
-import type { IContainer } from "@fluidframework/container-definitions/internal";
-import type { IFluidLoadable } from "@fluidframework/core-interfaces";
+import type {
+	AttachState,
+	ConnectionState,
+	IContainer,
+	IContainerEvents,
+	ICriticalContainerError,
+} from "@fluidframework/container-definitions/internal";
+import type {
+	IEventProvider,
+	IFluidLoadable,
+	IRequest,
+} from "@fluidframework/core-interfaces";
 import type { IClient } from "@fluidframework/driver-definitions";
 
 import type { AudienceClientMetadata } from "./AudienceMetadata.js";
@@ -43,6 +53,83 @@ import {
 	handleIncomingWindowMessage,
 	postMessagesToWindow,
 } from "./messaging/index.js";
+
+/**
+ * A lightweight interface that represents the essential properties and methods of a Fluid container
+ * needed for the Devtools functionality.
+ * This interface is a subset of {@link IContainer}, containing only
+ * the properties and methods required for monitoring and debugging container state.
+ *
+ * @alpha
+ */
+export interface DecomposedIContainer extends IEventProvider<IContainerEvents> {
+	/**
+	 * Attaches the container to the Fluid service.
+	 * @param request - The request object containing the container's URL and other connection details
+	 * @param attachProps - Optional properties to control the attachment behavior
+	 * @param attachPropsDeltaConnection - Optional flag to control delta connection behavior
+	 * @returns A promise that resolves when the container is attached
+	 */
+	attach(
+		request: IRequest,
+		attachProps?: { deltaConnection?: "none" | "delayed" },
+	): Promise<void>;
+
+	/**
+	 * Connects the container to the Fluid service.
+	 * Called after the container is attached to establish a connection.
+	 */
+	connect(): void;
+
+	/**
+	 * Disconnects the container from the Fluid service.
+	 * Called to break the connection while keeping the container attached.
+	 */
+	disconnect(): void;
+
+	/**
+	 * Closes the container and releases all resources.
+	 * @param error - Optional error that caused the container to close
+	 */
+	close(error?: ICriticalContainerError): void;
+
+	/**
+	 * Disposes of the container and releases all resources.
+	 * Similar to close, but typically used for cleanup when the container is no longer needed.
+	 * @param error - Optional error that caused the container to be disposed
+	 */
+	dispose(error?: ICriticalContainerError): void;
+
+	/**
+	 * The audience of the container, which represents all connected clients.
+	 * Used to track who is connected to the container and their roles.
+	 */
+	readonly audience: IAudience;
+
+	/**
+	 * The unique identifier of the current client in the container.
+	 * Undefined if the client is not connected to the container.
+	 */
+	readonly clientId?: string | undefined;
+
+	/**
+	 * The current attachment state of the container.
+	 * Indicates whether the container is attached to the Fluid service.
+	 */
+	readonly attachState: AttachState;
+
+	/**
+	 * The current connection state of the container.
+	 * Indicates whether the container is connected to the Fluid service.
+	 */
+	readonly connectionState: ConnectionState;
+
+	/**
+	 * Whether the container is closed.
+	 * True if the container has been closed or disposed.
+	 */
+	readonly closed: boolean;
+}
 
 /**
  * Properties for registering a {@link @fluidframework/container-definitions#IContainer} with the Devtools.
@@ -129,7 +216,7 @@ export class ContainerDevtools implements IContainerDevtools, HasContainerKey {
 	/**
 	 * The registered Container.
 	 */
-	public readonly container: IContainer;
+	public readonly container: DecomposedIContainer;
 
 	/**
 	 * The {@link ContainerDevtools.container}'s audience.
