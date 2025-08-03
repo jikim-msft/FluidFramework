@@ -3,10 +3,22 @@
  * Licensed under the MIT License.
  */
 
+import type { IContainer } from "@fluidframework/container-definitions/internal";
+import type { IContainerRuntime } from "@fluidframework/container-runtime-definitions/internal";
+import type { IFluidLoadable } from "@fluidframework/core-interfaces";
+import type { IFluidDataStoreRuntime } from "@fluidframework/datastore-definitions/internal";
 import { UsageError } from "@fluidframework/telemetry-utils/internal";
 
+import type { BaseDevtools } from "./BaseDevtools.js";
 import type { ContainerKey } from "./CommonInterfaces.js";
-import { ContainerDevtools, type ContainerDevtoolsProps } from "./ContainerDevtools.js";
+import {
+	ContainerDevtools,
+	type ContainerDevtoolsProps,
+	type RegisterDevtoolsProps,
+} from "./ContainerDevtools.js";
+import { ContainerRuntime } from "./ContainerRuntimeDevtools.js";
+import { DecomposedContainerForIContainerRuntime } from "./DecomposedContainer.js";
+import type { DecomposedContainer } from "./DecomposedContainer.js";
 import type { IDevtoolsLogger } from "./DevtoolsLogger.js";
 import type { DevtoolsFeatureFlags } from "./Features.js";
 import type { IContainerDevtools } from "./IContainerDevtools.js";
@@ -132,7 +144,7 @@ export class FluidDevtools implements IFluidDevtools {
 	 * Stores Container-level devtools instances registered with this object.
 	 * Maps from a {@link ContainerKey} to the corresponding {@link ContainerDevtools} instance.
 	 */
-	private readonly containers: Map<ContainerKey, ContainerDevtools>;
+	private readonly containers: Map<ContainerKey, BaseDevtools<DecomposedContainer>>;
 
 	/**
 	 * Private {@link FluidDevtools.disposed} tracking.
@@ -292,24 +304,85 @@ export class FluidDevtools implements IFluidDevtools {
 	/**
 	 * {@inheritDoc IFluidDevtools.registerContainerDevtools}
 	 */
-	public registerContainerDevtools(props: ContainerDevtoolsProps): void {
+	public async registerContainerDevtools(props: RegisterDevtoolsProps): Promise<void> {
 		if (this.disposed) {
 			throw new UsageError(useAfterDisposeErrorText);
 		}
 
-		const { containerKey } = props;
+		const { container, containerKey, containerData } = props;
+
+		console.log('containerData', containerData)
 
 		if (this.containers.has(containerKey)) {
 			throw new UsageError(getContainerAlreadyRegisteredErrorText(containerKey));
 		}
 
-		const containerDevtools = new ContainerDevtools({
-			...props,
-		});
-		this.containers.set(containerKey, containerDevtools);
+		let devtools: BaseDevtools<DecomposedContainer>;
+
+		// Check if container is IContainer
+		if (isIContainer(container)) {
+			devtools = new ContainerDevtools({
+				...props,
+				container: container as unknown as IContainer,
+			});
+		}
+		// Check if container is IContainerRuntime
+		else if (isIContainerRuntime(container)) {
+			const extractContainerData = await FluidDevtools.extractContainerDataFromRuntime(container);
+			const decomposedContainer = new DecomposedContainerForIContainerRuntime(
+				container as unknown as IFluidDataStoreRuntime,
+			);
+
+			devtools = new ContainerRuntime({
+				containerKey,
+				container: decomposedContainer,
+				containerData: extractContainerData,
+			});
+		}
+		// Invalid container type
+		else {
+			throw new UsageError("Container must be either IContainer or IContainerRuntime");
+		}
+
+		this.containers.set(containerKey, devtools);
 
 		// Post message for container list change
 		this.postContainerList();
+	}
+
+	/**
+	 * Helper method to extract container data from IContainerRuntime for visualization.
+	 * This method attempts to access the entry point data store from the runtime.
+	 *
+	 * @param containerRuntime - The container runtime to extract data from
+	 * @returns A record of data store names to IFluidLoadable objects, or undefined if no data can be extracted
+	 */
+	public static async extractContainerDataFromRuntime(
+		containerRuntime: IContainerRuntime,
+	): Promise<Record<string, IFluidLoadable> | undefined> {
+		try {
+			// Get the entry point from the container runtime
+			// Cast to access getEntryPoint method which exists on the concrete implementation
+			const runtimeWithEntryPoint = containerRuntime as IContainerRuntime & {
+				getEntryPoint(): Promise<IFluidLoadable>;
+			};
+
+			if (
+				typeof runtimeWithEntryPoint.scope === "object" &&
+				typeof runtimeWithEntryPoint.getEntryPoint === "function"
+			) {
+				const entryPoint = await runtimeWithEntryPoint.getEntryPoint();
+				if (entryPoint !== undefined) {
+					return {
+						entryPoint,
+					};
+				}
+			}
+		} catch (error) {
+			console.warn("Could not extract container data from runtime:", error);
+		}
+
+		return undefined;
 	}
 
 	/**
@@ -425,4 +498,26 @@ export function initializeDevtools(props?: FluidDevtoolsProps): IFluidDevtools {
  */
 export function tryGetFluidDevtools(): IFluidDevtools | undefined {
 	return FluidDevtools.tryGet();
+}
+
+// Assuming the interfaces have some distinguishing properties
+function isIContainer(instance: unknown): instance is IContainer {
+	return (
+		typeof instance === "object" &&
+		instance !== null &&
+		"resolvedUrl" in instance && // IContainer specific
+		"getSpecifiedCodeDetails" in instance && // IContainer specific
+		"proposeCodeDetails" in instance // IContainer specific
+	);
+}
+
+function isIContainerRuntime(instance: unknown): instance is IContainerRuntime {
+	return (
+		typeof instance === "object" &&
+		instance !== null &&
+		"options" in instance && // IContainerRuntime specific
+		"clientDetails" in instance && // IContainerRuntime specific
+		"storage" in instance && // IContainerRuntime specific
+		"flushMode" in instance // IContainerRuntime specific
+	);
 }

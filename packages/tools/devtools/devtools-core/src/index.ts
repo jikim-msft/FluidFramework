@@ -31,7 +31,7 @@ export type {
 } from "./CommonInterfaces.js";
 export { EditType } from "./CommonInterfaces.js";
 export { ContainerStateChangeKind } from "./Container.js";
-export type { ContainerDevtoolsProps } from "./ContainerDevtools.js";
+export type { ContainerDevtoolsProps, RegisterDevtoolsProps } from "./ContainerDevtools.js";
 export type { ContainerStateMetadata } from "./ContainerMetadata.js";
 export type {
 	FluidHandleNode,

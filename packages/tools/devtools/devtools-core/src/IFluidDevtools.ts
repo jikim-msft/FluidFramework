@@ -6,7 +6,7 @@
 import type { IDisposable } from "@fluidframework/core-interfaces";
 
 import type { ContainerKey } from "./CommonInterfaces.js";
-import type { ContainerDevtoolsProps } from "./ContainerDevtools.js";
+import type { RegisterDevtoolsProps } from "./ContainerDevtools.js";
 
 /**
  * Fluid Devtools. A single, global instance is used to generate and communicate stats associated with the general Fluid
@@ -31,7 +31,7 @@ export interface IFluidDevtools extends IDisposable {
 	 *
 	 * @throws Will throw if devtools have already been registered for the specified {@link ContainerKey}.
 	 */
-	registerContainerDevtools(props: ContainerDevtoolsProps): void;
+	registerContainerDevtools(props: RegisterDevtoolsProps): void;
 
 	/**
 	 * Removes the Container with the specified {@link ContainerKey} from the Devtools.

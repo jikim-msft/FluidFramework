@@ -24,7 +24,7 @@ describe("FluidDevtools unit tests", () => {
 		FluidDevtools.tryGet()?.dispose();
 	});
 
-	it("Container change events", () => {
+	it("Container change events", async () => {
 		const devtools = FluidDevtools.initialize();
 
 		expect(devtools.getAllContainerDevtools().length).to.equal(0);
@@ -35,7 +35,7 @@ describe("FluidDevtools unit tests", () => {
 			containerKey,
 			container,
 		};
-		devtools.registerContainerDevtools(containerProps);
+		await devtools.registerContainerDevtools(containerProps);
 
 		expect(devtools.getAllContainerDevtools().length).to.equal(1);
 
@@ -53,7 +53,7 @@ describe("FluidDevtools unit tests", () => {
 		devtools.dispose();
 	});
 
-	it("Disposal", () => {
+	it("Disposal", async () => {
 		const devtools = FluidDevtools.initialize();
 
 		devtools.dispose();
@@ -68,15 +68,18 @@ describe("FluidDevtools unit tests", () => {
 		};
 
 		// Validate that subsequent actions on disposed devtools instance fail
-		expect(() => devtools.registerContainerDevtools(containerProps)).to.throw(
-			useAfterDisposeErrorText,
-		);
+		try {
+			await devtools.registerContainerDevtools(containerProps);
+			expect.fail("Should have thrown an error");
+		} catch (error) {
+			expect(error).to.have.property("message", useAfterDisposeErrorText);
+		}
 		expect(() => devtools.closeContainerDevtools(containerKey)).to.throw(
 			useAfterDisposeErrorText,
 		);
 	});
 
-	it("Registering a duplicate Container key throws", () => {
+	it("Registering a duplicate Container key throws", async () => {
 		const devtools = FluidDevtools.initialize();
 
 		const containerKey = "test-container-key";
@@ -86,7 +89,7 @@ describe("FluidDevtools unit tests", () => {
 			containerKey,
 			container: container1,
 		};
-		devtools.registerContainerDevtools(container1Props);
+		await devtools.registerContainerDevtools(container1Props);
 
 		const container2 = createMockContainer();
 		const container2Props: ContainerDevtoolsProps = {
@@ -94,9 +97,15 @@ describe("FluidDevtools unit tests", () => {
 			container: container2,
 		};
 
-		expect(() => devtools.registerContainerDevtools(container2Props)).to.throw(
-			getContainerAlreadyRegisteredErrorText(containerKey),
-		);
+		try {
+			await devtools.registerContainerDevtools(container2Props);
+			expect.fail("Should have thrown an error");
+		} catch (error) {
+			expect(error).to.have.property(
+				"message",
+				getContainerAlreadyRegisteredErrorText(containerKey),
+			);
+		}
 	});
 
 	it("tryGet", () => {

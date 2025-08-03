@@ -34,11 +34,17 @@ export interface IDevtoolsLogger extends ITelemetryBaseLogger {
 // @alpha
 export interface IFluidDevtools extends IDisposable {
     closeContainerDevtools(containerKey: ContainerKey): void;
-    registerContainerDevtools(props: ContainerDevtoolsProps): void;
+    registerContainerDevtools(props: RegisterDevtoolsProps): void;
 }
 
 // @alpha
 export function initializeDevtools(props?: FluidDevtoolsProps): IFluidDevtools;
+
+// @alpha
+export interface RegisterDevtoolsProps extends HasContainerKey {
+    container: IContainer | IContainerRuntime;
+    containerData?: Record<string, IFluidLoadable>;
+}
 
 // @alpha
 export function tryGetFluidDevtools(): IFluidDevtools | undefined;
