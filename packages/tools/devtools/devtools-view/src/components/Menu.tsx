@@ -14,7 +14,6 @@ import {
 import {
 	ArrowSync24Regular,
 	Info24Regular,
-	Dismiss24Regular,
 	PlugDisconnected20Regular,
 } from "@fluentui/react-icons";
 import { ConnectionState } from "@fluidframework/container-loader";
@@ -352,15 +351,6 @@ export interface MenuItemProps {
 	 * Icon to display next to the container name based on its state.
 	 */
 	stateIcon?: React.ReactElement;
-	/**
-	 * Callback function for deleting a closed container.
-	 * Only shown when the container is closed.
-	 */
-	onDelete?: (event: React.MouseEvent) => void;
-	/**
-	 * Whether the container is closed and can be deleted.
-	 */
-	isClosed?: boolean;
 
 	/**
 	 * Whether the container or container runtime has recent changes.
@@ -402,31 +392,13 @@ const useMenuItemStyles = makeStyles({
 		minWidth: 0, // Allow flex item to shrink below content size
 		overflow: "hidden", // Hide overflow
 	},
-	deleteButton: {
-		backgroundColor: "transparent",
-		border: "none",
-		cursor: "pointer",
-		padding: "4px",
-		marginLeft: "auto",
-		"&:hover": {
-			backgroundColor: tokens.colorNeutralBackground1Hover,
-		},
-	},
 });
 
 /**
  * Generic component for a menu item (under a section).
  */
 export function MenuItem(props: MenuItemProps): React.ReactElement {
-	const {
-		isActive,
-		onClick,
-		text,
-		stateIcon,
-		onDelete,
-		isClosed = false,
-		hasChanges = false,
-	} = props;
+	const { isActive, onClick, text, stateIcon, hasChanges = false } = props;
 
 	const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
 		if (event.key === "Enter" || event.key === " ") {
@@ -442,9 +414,7 @@ export function MenuItem(props: MenuItemProps): React.ReactElement {
 	// Use connected style as default since we're replacing colors with icons
 	const connectionStyle = styles.connected;
 
-	const closedStyle = isClosed ? styles.deleteButton : undefined;
-
-	const style = mergeClasses(styles.root, baseStyle, connectionStyle, closedStyle);
+	const style = mergeClasses(styles.root, baseStyle, connectionStyle);
 
 	return (
 		<div
@@ -479,19 +449,6 @@ export function MenuItem(props: MenuItemProps): React.ReactElement {
 				</span>
 				{stateIcon && <div style={{ flexShrink: 0 }}>{stateIcon}</div>}
 			</div>
-			{isClosed && onDelete && (
-				<Tooltip content="Remove closed container" relationship="label">
-					<Button
-						icon={<Dismiss24Regular />}
-						className={styles.deleteButton}
-						onClick={(e) => {
-							e.stopPropagation();
-							onDelete(e);
-						}}
-						aria-label="Remove closed container"
-					/>
-				</Tooltip>
-			)}
 		</div>
 	);
 }
@@ -626,7 +583,7 @@ function ContainersMenuSection(props: ContainersMenuSectionProps): React.ReactEl
 
 	/**
 	 * Gets the appropriate icon for a container based on its state.
-	 * Only shows icons for disconnected states. Closed containers show no icon.
+	 * Only shows icons for disconnected states.
 	 */
 	function getContainerStateIcon(containerKey: ContainerKey): React.ReactElement | undefined {
 		const state = containerStates.get(containerKey);
@@ -634,24 +591,11 @@ function ContainersMenuSection(props: ContainersMenuSectionProps): React.ReactEl
 			return undefined; // No icon for unknown state
 		}
 
-		// Don't show icon for closed containers - they'll have the X button instead
-		if (state.closed) {
-			return undefined;
-		}
-
 		if (state.connectionState === ConnectionState.Disconnected) {
 			return <PlugDisconnected20Regular />; // Only show icon for disconnected
 		}
 
 		return undefined; // No icon for connected states
-	}
-
-	/**
-	 * Handles deletion of a closed container.
-	 */
-	function handleDeleteContainer(containerKey: ContainerKey): void {
-		// Note: RemoveContainer functionality will be implemented in a future PR
-		console.log("Delete container functionality not yet implemented");
 	}
 
 	let containerSectionInnerView: React.ReactElement;
@@ -664,17 +608,12 @@ function ContainersMenuSection(props: ContainersMenuSectionProps): React.ReactEl
 		containerSectionInnerView = (
 			<>
 				{containers.map((containerKey: string) => {
-					const state = containerStates.get(containerKey);
-					const isClosed = state?.closed ?? false;
-
 					return (
 						<MenuItem
 							key={containerKey}
 							isActive={currentContainerSelection === containerKey}
 							text={containerKey}
 							stateIcon={getContainerStateIcon(containerKey)}
-							isClosed={isClosed}
-							onDelete={isClosed ? () => handleDeleteContainer(containerKey) : undefined}
 							onClick={(event): void => {
 								selectContainer(`${containerKey}`);
 							}}
