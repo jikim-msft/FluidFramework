@@ -237,6 +237,9 @@ function _DevtoolsView(props: _DevtoolsViewProps): React.ReactElement {
 	const { supportedFeatures } = props;
 
 	const [containers, setContainers] = React.useState<ContainerKey[] | undefined>();
+	const [containerRuntimes, setContainerRuntimes] = React.useState<
+		ContainerKey[] | undefined
+	>();
 	const [menuSelection, setMenuSelection] = React.useState<MenuSelection>({
 		type: "homeMenuSelection",
 	});
@@ -250,6 +253,7 @@ function _DevtoolsView(props: _DevtoolsViewProps): React.ReactElement {
 			[ContainerList.MessageType]: async (untypedMessage) => {
 				const message = untypedMessage as ContainerList.Message;
 				setContainers(message.data.containers);
+				setContainerRuntimes(message.data.containerRuntimes ?? []);
 				return true;
 			},
 		};
@@ -271,7 +275,7 @@ function _DevtoolsView(props: _DevtoolsViewProps): React.ReactElement {
 		return (): void => {
 			messageRelay.off("message", messageHandler);
 		};
-	}, [messageRelay, setContainers]);
+	}, [messageRelay, setContainers, setContainerRuntimes]);
 
 	const styles = useDevtoolsStyles();
 
@@ -281,10 +285,15 @@ function _DevtoolsView(props: _DevtoolsViewProps): React.ReactElement {
 				currentSelection={menuSelection}
 				setSelection={setMenuSelection}
 				containers={containers}
+				containerRuntimes={containerRuntimes}
 				supportedFeatures={supportedFeatures}
 			/>
 			<div style={{ width: "1px", backgroundColor: tokens.colorNeutralForeground1 }}></div>
-			<View menuSelection={menuSelection} containers={containers} />
+			<View
+				menuSelection={menuSelection}
+				containers={containers}
+				containerRuntimes={containerRuntimes}
+			/>
 		</div>
 	);
 }
@@ -318,15 +327,23 @@ interface ViewProps {
 	 * The list of Containers, if any are registered with the webpage's Devtools instance.
 	 */
 	containers?: ContainerKey[];
+
+	/**
+	 * The list of Container Runtimes, if any are registered with the webpage's Devtools instance.
+	 */
+	containerRuntimes?: ContainerKey[];
 }
 
 /**
  * View body component used by {@link DevtoolsView}.
  */
 function View(props: ViewProps): React.ReactElement {
-	const { menuSelection, containers } = props;
+	const { menuSelection, containers, containerRuntimes } = props;
 
 	const styles = useViewStyles();
+
+	// Combine containers and container runtimes for selection purposes
+	const allContainers = [...(containers ?? []), ...(containerRuntimes ?? [])];
 
 	let view: React.ReactElement;
 	switch (menuSelection?.type) {
@@ -335,7 +352,7 @@ function View(props: ViewProps): React.ReactElement {
 			break;
 		}
 		case "containerMenuSelection": {
-			const container: ContainerKey | undefined = containers?.find(
+			const container: ContainerKey | undefined = allContainers.find(
 				(containerKey) => containerKey === menuSelection.containerKey,
 			);
 			view =

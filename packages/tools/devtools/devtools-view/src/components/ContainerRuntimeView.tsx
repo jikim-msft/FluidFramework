@@ -23,18 +23,18 @@ import { TreeDataView } from "./data-visualization/index.js";
 const loggingContext = "INLINE(VIEW)";
 
 /**
- * {@link DataObjectsView} input props.
+ * {@link ContainerRuntimeView} input props.
  */
-export type DataObjectsViewProps = HasContainerKey;
+export type ContainerRuntimeViewProps = HasContainerKey;
 
 /**
  * Displays the data inside a container.
  *
  * @remarks
  *
- * Dispatches data object rendering based on those provided view {@link TreeDataView}.
+ * Dispatches container runtime rendering based on those provided view {@link TreeDataView}.
  */
-export function DataObjectsView(props: DataObjectsViewProps): React.ReactElement {
+export function ContainerRuntimeView(props: ContainerRuntimeViewProps): React.ReactElement {
 	const { containerKey } = props;
 
 	const messageRelay = useMessageRelay();
