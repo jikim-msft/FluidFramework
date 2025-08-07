@@ -15,6 +15,7 @@ import {
 	ArrowSync24Regular,
 	Info24Regular,
 	PlugDisconnected20Regular,
+	Dismiss24Regular,
 } from "@fluentui/react-icons";
 import { ConnectionState } from "@fluidframework/container-loader";
 import type {
@@ -68,6 +69,17 @@ const useMenuStyles = makeStyles({
 		"&:hover": {
 			color: tokens.colorNeutralForeground1Hover,
 			backgroundColor: tokens.colorNeutralBackground1Hover,
+		},
+	},
+	deleteButton: {
+		backgroundColor: "transparent",
+		border: "none",
+		cursor: "pointer",
+		padding: "0px",
+		marginLeft: "5px",
+		"&:hover": {
+			color: tokens.colorPaletteRedForeground1,
+			backgroundColor: tokens.colorPaletteRedBackground1,
 		},
 	},
 });
@@ -392,6 +404,34 @@ const useMenuItemStyles = makeStyles({
 		minWidth: 0, // Allow flex item to shrink below content size
 		overflow: "hidden", // Hide overflow
 	},
+	changeIndicator: {
+		width: "6px",
+		height: "6px",
+		borderRadius: "50%",
+		backgroundColor: tokens.colorPaletteRedBackground3,
+		marginRight: "1px",
+		flexShrink: 0,
+	},
+	textSpan: {
+		whiteSpace: "nowrap",
+		flex: 1,
+		minWidth: 0,
+		marginRight: "8px",
+	},
+	stateIconContainer: {
+		flexShrink: 0,
+	},
+	deleteButton: {
+		backgroundColor: "transparent",
+		border: "none",
+		cursor: "pointer",
+		padding: "0px",
+		marginLeft: "5px",
+		"&:hover": {
+			color: tokens.colorPaletteRedForeground1,
+			backgroundColor: tokens.colorPaletteRedBackground1,
+		},
+	},
 });
 
 /**
@@ -425,29 +465,9 @@ export function MenuItem(props: MenuItemProps): React.ReactElement {
 			tabIndex={0}
 		>
 			<div className={styles.itemContent}>
-				{hasChanges && (
-					<div
-						style={{
-							width: "6px",
-							height: "6px",
-							borderRadius: "50%",
-							backgroundColor: tokens.colorPaletteRedBackground3,
-							marginRight: "1px",
-							flexShrink: 0,
-						}}
-					/>
-				)}
-				<span
-					style={{
-						whiteSpace: "nowrap",
-						flex: 1,
-						minWidth: 0,
-						marginRight: "8px", // Increased from 4px to 8px for more distinct spacing
-					}}
-				>
-					{text}
-				</span>
-				{stateIcon && <div style={{ flexShrink: 0 }}>{stateIcon}</div>}
+				{hasChanges && <div className={styles.changeIndicator} />}
+				<span className={styles.textSpan}>{text}</span>
+				{stateIcon && <div className={styles.stateIconContainer}>{stateIcon}</div>}
 			</div>
 		</div>
 	);
@@ -482,6 +502,11 @@ export interface MenuProps {
 	 * The set of Container Runtimes to offer as selection options.
 	 */
 	containerRuntimes?: ContainerKey[];
+
+	/**
+	 * Callback function when a container should be removed from the list.
+	 */
+	onRemoveContainer?: (containerKey: ContainerKey) => void;
 }
 /**
  * {@link ContainersMenuSection} input props.
@@ -513,6 +538,11 @@ interface ContainersMenuSectionProps {
 	 * Tooltip content to display for the section info icon.
 	 */
 	tooltipContent: React.ReactElement;
+
+	/**
+	 * Callback function when a container should be removed from the list.
+	 */
+	onRemoveContainer?: (containerKey: ContainerKey) => void;
 }
 
 /**
@@ -528,6 +558,7 @@ function ContainersMenuSection(props: ContainersMenuSectionProps): React.ReactEl
 		currentContainerSelection,
 		sectionLabel,
 		tooltipContent,
+		onRemoveContainer,
 	} = props;
 
 	const messageRelay = useMessageRelay();
@@ -538,6 +569,8 @@ function ContainersMenuSection(props: ContainersMenuSectionProps): React.ReactEl
 	const [containersWithChanges, setContainersWithChanges] = React.useState<Set<string>>(
 		new Set(),
 	);
+
+	const styles = useMenuStyles();
 
 	// Fetch container states when containers list changes
 	React.useEffect(() => {
@@ -581,23 +614,6 @@ function ContainersMenuSection(props: ContainersMenuSectionProps): React.ReactEl
 		};
 	}, [containers, messageRelay]);
 
-	/**
-	 * Gets the appropriate icon for a container based on its state.
-	 * Only shows icons for disconnected states.
-	 */
-	function getContainerStateIcon(containerKey: ContainerKey): React.ReactElement | undefined {
-		const state = containerStates.get(containerKey);
-		if (state === undefined) {
-			return undefined; // No icon for unknown state
-		}
-
-		if (state.connectionState === ConnectionState.Disconnected) {
-			return <PlugDisconnected20Regular />; // Only show icon for disconnected
-		}
-
-		return undefined; // No icon for connected states
-	}
-
 	let containerSectionInnerView: React.ReactElement;
 	if (containers === undefined) {
 		containerSectionInnerView = <Waiting label={`Fetching ${sectionLabel} list`} />;
@@ -608,12 +624,34 @@ function ContainersMenuSection(props: ContainersMenuSectionProps): React.ReactEl
 		containerSectionInnerView = (
 			<>
 				{containers.map((containerKey: string) => {
+					const state = containerStates.get(containerKey);
+					const isClosed = state?.closed ?? false;
+
+					let stateIcon: React.ReactElement | undefined;
+					if (isClosed) {
+						stateIcon = (
+							<Tooltip content="Remove closed container" relationship="label">
+								<Button
+									icon={<Dismiss24Regular />}
+									className={styles.deleteButton}
+									onClick={(e) => {
+										e.stopPropagation();
+										onRemoveContainer?.(containerKey);
+									}}
+									aria-label="Remove closed container"
+								/>
+							</Tooltip>
+						);
+					} else if (state?.connectionState === ConnectionState.Disconnected) {
+						stateIcon = <PlugDisconnected20Regular />;
+					}
+
 					return (
 						<MenuItem
 							key={containerKey}
 							isActive={currentContainerSelection === containerKey}
 							text={containerKey}
-							stateIcon={getContainerStateIcon(containerKey)}
+							stateIcon={stateIcon}
 							onClick={(event): void => {
 								selectContainer(`${containerKey}`);
 							}}
@@ -647,8 +685,14 @@ function ContainersMenuSection(props: ContainersMenuSectionProps): React.ReactEl
  * Menu component for {@link DevtoolsView}.
  */
 export function Menu(props: MenuProps): React.ReactElement {
-	const { currentSelection, setSelection, supportedFeatures, containers, containerRuntimes } =
-		props;
+	const {
+		currentSelection,
+		setSelection,
+		supportedFeatures,
+		containers,
+		containerRuntimes,
+		onRemoveContainer,
+	} = props;
 	const usageLogger = useLogger();
 
 	const styles = useMenuStyles();
@@ -723,6 +767,7 @@ export function Menu(props: MenuProps): React.ReactElement {
 				selectContainer={onContainerClicked}
 				sectionLabel="Containers"
 				tooltipContent={containersInfoTooltipText}
+				onRemoveContainer={onRemoveContainer}
 			/>,
 		);
 	}
@@ -741,6 +786,7 @@ export function Menu(props: MenuProps): React.ReactElement {
 				selectContainer={onContainerClicked}
 				sectionLabel="Container Runtimes"
 				tooltipContent={containerRuntimeInfoTooltipText}
+				onRemoveContainer={onRemoveContainer}
 			/>,
 		);
 	}

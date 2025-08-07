@@ -277,6 +277,14 @@ function _DevtoolsView(props: _DevtoolsViewProps): React.ReactElement {
 		};
 	}, [messageRelay, setContainers, setContainerRuntimes]);
 
+	/**
+	 * Handles removing a container from the list when the dismiss button is clicked.
+	 */
+	const handleRemoveContainer = React.useCallback((containerKey: ContainerKey): void => {
+		setContainers((prev) => prev?.filter((key) => key !== containerKey));
+		setContainerRuntimes((prev) => prev?.filter((key) => key !== containerKey));
+	}, []);
+
 	const styles = useDevtoolsStyles();
 
 	return (
@@ -287,6 +295,7 @@ function _DevtoolsView(props: _DevtoolsViewProps): React.ReactElement {
 				containers={containers}
 				containerRuntimes={containerRuntimes}
 				supportedFeatures={supportedFeatures}
+				onRemoveContainer={handleRemoveContainer}
 			/>
 			<div style={{ width: "1px", backgroundColor: tokens.colorNeutralForeground1 }}></div>
 			<View
