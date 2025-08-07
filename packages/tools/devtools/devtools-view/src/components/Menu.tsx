@@ -593,9 +593,11 @@ function ContainersMenuSection(props: ContainersMenuSectionProps): React.ReactEl
 				const containerKey = message.data.containerKey;
 
 				// Show change indicator only for the most recent change
-				setContainersWithChanges(() => {
-					return new Set([containerKey]);
-				});
+				if (message.data.reason === DataVisualization.UpdateReason.DataChanged) {
+					setContainersWithChanges(() => {
+						return new Set([containerKey]);
+					});
+				}
 
 				return true;
 			},
