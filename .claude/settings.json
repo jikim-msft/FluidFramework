@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v gh &>/dev/null && gh auth status &>/dev/null || echo '⚠️  GitHub CLI not authenticated. Run: gh auth login'"
+          }
+        ]
+      }
+    ]
+  }
+}
